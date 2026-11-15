@@ -28,3 +28,131 @@ plot(pressure)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 # my first commit
+
+
+
+```{r}
+library(tidyverse)
+library(sf)
+library(here)
+library(janitor)
+library(countrycode)
+```
+```{r}
+
+```
+
+```{r}
+hdr <- read_csv(here("week4", "HDR25_Composite_indices_complete_time_series.csv"),
+                locale = locale(encoding = "latin1"),
+                na = c("", "NA", ".."))
+
+dim(hdr)
+names(hdr)[1:10]
+names(hdr)[str_detect(names(hdr), "gii")]
+```
+
+```{r}
+library(tidyverse)
+library(sf)
+library(here)
+library(janitor)
+library(countrycode)
+library(tmap)
+```
+
+```{r}
+hdr <- read_csv(here("week4", "HDR25_Composite_indices_complete_time_series.csv"),
+                locale = locale(encoding = "latin1"),
+                na = c("", "NA", ".."))
+```
+
+```{r}
+dim(hdr)
+names(hdr)[1:10]
+names(hdr)[str_detect(names(hdr), "gii")]
+```
+
+```{r}
+gii <- hdr %>%
+  dplyr::select(iso3, country, gii_2010, gii_2019) %>%
+  mutate(gii_diff = gii_2019 - gii_2010)
+
+head(gii)
+summary(gii$gii_diff)
+
+world <- st_read(here("week4", "world_countries.geojson"))
+
+names(world)
+head(world)
+st_crs(world)$epsg
+```
+```{r}
+
+world <- world %>%
+  mutate(iso3 = countrycode(ISO, origin = "iso2c", destination = "iso3c"))
+
+head(world)
+
+
+world_gii <- world %>%
+  left_join(gii, by = "iso3")
+
+dim(world_gii)
+
+
+sum(!is.na(world_gii$gii_diff))
+
+
+gii %>%
+  filter(!iso3 %in% world$iso3) %>%
+  dplyr::select(iso3, country)
+
+
+world %>%
+  filter(COUNTRY == "Namibia") %>%
+  st_drop_geometry()
+```
+```{r}
+gii %>%
+  arrange(gii_diff) %>%
+  head(10)
+
+
+gii %>%
+  filter(gii_diff > 0) %>%
+  arrange(desc(gii_diff))
+
+
+tmap_mode("plot")
+
+tm_shape(world_gii) +
+  tm_polygons(fill = "gii_diff",
+              fill.scale = tm_scale_continuous(values = "-brewer.rd_bu",
+                                               midpoint = 0,
+                                               value.na = "grey85",
+                                               label.na = "No data"),
+              fill.legend = tm_legend(title = "Change in GII\n2019 − 2010"),
+              col = "white",
+              lwd = 0.2) +
+  tm_title("Change in Gender Inequality Index, 2010–2019") +
+  tm_credits("Negative = less inequality. Source: UNDP HDR 2025",
+             position = c("left", "bottom"))
+```
+```{r}
+tm_shape(world_gii) +
+  tm_polygons(fill = "gii_diff",
+              fill.scale = tm_scale_intervals(
+                breaks = c(-0.6, -0.15, -0.10, -0.05, -0.02, 0, 0.02, 0.3),
+                values = "-brewer.rd_bu",
+                midpoint = 0,
+                value.na = "grey85",
+                label.na = "No data"),
+              fill.legend = tm_legend(title = "Change in GII\n2019 − 2010"),
+              col = "white",
+              lwd = 0.2) +
+  tm_title("Change in Gender Inequality Index, 2010–2019") +
+  tm_credits("Negative = less inequality. Source: UNDP HDR 2025",
+             position = c("left", "bottom"))
+```
+
